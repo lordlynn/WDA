@@ -1,3 +1,9 @@
+@echo off
+
+set configDir=%CD%
+set configFile=mosquitto.conf 
+set file=%configDir%\%configFile%
+
 cd C:\Program Files\mosquitto
 
-.\mosquitto -c "C:\Users\zacly\OneDrive\Documents\thesis\Project42\Broker\mosquitto.conf" -v
+.\mosquitto -c "%file%" -v
