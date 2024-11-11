@@ -10,7 +10,6 @@ from tkinter import NORMAL
 import socket
 import time
 import csv
-import numpy as np
 
 
 class MQTT:
@@ -146,6 +145,7 @@ class MQTT:
                 self.top.serialOutput.yview('end')  
         
         elif (self.configWasSet[sensor]):                                                       # If data capture is in progress
+    
             if ("END" in msg):                                                                  # If end of data capture was reached
                 if (keys[0] in sensor):
                     self.top.device1Status.config(text="-")
@@ -158,8 +158,9 @@ class MQTT:
                                              sensor + " ended\n") 
                 self.top.serialOutput.yview('end') 
 
-                # if (self.devices[keys[0]] == 0 or self.devices[keys[0]] == 0):
-                #     return
+                # TODO: Check to make sure this works
+                if (self.devices[keys[0]] == 1 or self.devices[keys[1]] == 1):                 # Do not stop the data capture until both sensors report "END"
+                    return
 
                 self.configWasSet[sensor] = False
                       
@@ -241,7 +242,7 @@ class MQTT:
 
     def writeToFile(self):
         filename = self.top.outputFilenameEntry.get() + ".csv"
-        # time.sleep(1)
+
         with open(filename, mode="w", newline="") as file:
             writer = csv.writer(file)
             
@@ -268,9 +269,12 @@ class MQTT:
             
             writer.writerow(row)
             
-            # This is ridiculous... why did I do list comprehension. It works though
+            # This is ridiculous... why did I do list comprehension. It works though... How essential is this
             length = min(len(inner_array) for sensor_data in self.samples.values() 
                          for inner_array in sensor_data.values() if isinstance(inner_array, list))
+            
+            if (length > (self.top.dataFreq * self.top.dataLen)):                               # If the data length is longer than it should be, truncate it
+                length = self.top.dataFreq * self.top.dataLen
 
             fs = int(self.top.dataCaptureFrequency.get())
             for sensor in self.top.sensorNames:

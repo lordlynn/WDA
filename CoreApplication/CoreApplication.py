@@ -30,6 +30,10 @@ class CoreApplication():
     sensorNames = []                                                                            # Holds the name of the connected sensor at start of data capture, mainlu used by MQTT class
     bgColor = "blue4"                                                                           # TKinter color to use for window background
 
+    dataLen = None
+    dataFreq = None
+    numChannels = None
+
     def __init__(self):
         self.mqtt = MQTT.MQTT("Laptop", brokerIP=0, top=self)                                   # Set IP to 0 or ommit in arguments to connect to localhost
 
@@ -305,10 +309,14 @@ class CoreApplication():
             self.addPlots()                                                                     # Setup embedded plots in GUI, captureData flag is set after plots are made
 
             for device in list(self.mqtt.devices.keys()):                                       # Send configuration messages to all connected sensors to start sampling                               
-                if (self.mqtt.devices[device]):      
-                    self.mqtt.sendConfiguration(self.dataCaptureTime.get(), 
-                                                self.dataCaptureFrequency.get(), 
-                                                self.inputChannels.get(),
+                if (self.mqtt.devices[device]):
+                    self.dataLen = int(self.dataCaptureTime.get())
+                    self.dataFreq = int(self.dataCaptureFrequency.get())
+                    self.numChannels = int(self.inputChannels.get())
+                    
+                    self.mqtt.sendConfiguration(self.dataLen, 
+                                                self.dataFreq, 
+                                                self.numChannels,
                                                 device,
                                                 max(startTime))     
             
