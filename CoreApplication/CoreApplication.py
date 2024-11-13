@@ -323,7 +323,7 @@ class CoreApplication():
             self.startButton["state"] = DISABLED                                                # Disable start button until ready to run another test
             self.dataCaptureLabel.config(bg = "green")                                          # Set data capture label to green
 
-        else:                                                                                   # If ther stop button was pushed
+        else:                                                                                   # If the stop button was pushed
             for device in list(self.mqtt.devices.keys()):                                       # Iterate through devices
                 self.mqtt.configWasSet[device] = False                                          # Ends data capture
             self.dataCaptureLabel.config(bg = "red")                                            # Set data capture label to red 

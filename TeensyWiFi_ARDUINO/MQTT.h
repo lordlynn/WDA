@@ -5,7 +5,7 @@
 #define BROKER_IP "192.168.1.2"                                                         // Broker IP - Broker should be static IP at 192.168.1.2
 #define BROKER_PORT "1883"
 
-#define DEVICE_ID "sensor1"
+#define DEVICE_ID "sensor2"
 
 #define MAX_SAMPLE_FREQ 2000
 #define MAX_LEN         30

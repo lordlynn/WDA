@@ -43,8 +43,8 @@ void GPIO_IRQ(void);
 
 
 void setup() {
-  Serial.begin(115200);                                                                 // Serial for communicating with PC for debugging purposes
-  Serial1.begin(1000000);                                                               // Serial1 for communicating with WizFi360
+  Serial.begin(1000000);                                                                 // Serial for communicating with PC for debugging purposes
+  Serial1.begin(1500000);                                                               // Serial1 for communicating with WizFi360
 
   Serial.println("INIT");
 

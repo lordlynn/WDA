@@ -7,3 +7,6 @@ __pycache__/
 
 # Do not track .csv files
 *.csv
+
+# Do not track excel files
+*.xlsx
