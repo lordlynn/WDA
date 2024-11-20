@@ -106,6 +106,7 @@ class MQTT:
                 
                 self.deviceTime[sensor][0] = t
                 self.deviceTime[sensor][1] = time.time()                                        # Save the time we read RTC time at
+                return                                                                          # If we read in the time, dont run the rest of code
         except:
             pass
 
@@ -123,7 +124,8 @@ class MQTT:
             if (keys[1] in sensor):                                                             # If sensor 2 respinded set it as connected
                 self.top.device2Status.config(text="+")
                 self.devices[keys[1]] = 1
-
+            return                                                                              # If ping or pong was received, dont run the rest of the code
+        
         if (self.waitingForStart[sensor]):                                                      # If waiting for start, check messages for "START" / "FAIL"
             if ("START" in msg):
                 self.waitingForStart[sensor] = False
@@ -131,6 +133,7 @@ class MQTT:
                 self.top.serialOutput.insert("end", "Received the start signal from " +
                                              sensor + "\n") 
                 self.top.serialOutput.yview('end')                                              # Autoscroll
+        
 
             elif ("FAIL" in msg):
                 self.waitingForStart[sensor] = False
@@ -143,13 +146,14 @@ class MQTT:
                 self.top.serialOutput.insert("end", "Waiting for response..." + 
                                              sensor + "\n") 
                 self.top.serialOutput.yview('end')  
-        
+            
         elif (self.configWasSet[sensor]):                                                       # If data capture is in progress
     
             if ("END" in msg):                                                                  # If end of data capture was reached
                 if (keys[0] in sensor):
                     self.top.device1Status.config(text="-")
                     self.devices[keys[0]] = 0
+
                 if (keys[1] in sensor):
                     self.top.device2Status.config(text="-")
                     self.devices[keys[1]] = 0
@@ -158,22 +162,23 @@ class MQTT:
                                              sensor + " ended\n") 
                 self.top.serialOutput.yview('end') 
 
-                # TODO: Check to make sure this works
                 if (self.devices[keys[0]] == 1 or self.devices[keys[1]] == 1):                 # Do not stop the data capture until both sensors report "END"
                     return
 
                 self.configWasSet[sensor] = False
-                      
-                for plot in self.top.plotFrames:                                                # Stop all animators so plots can be manipulated manually  
-                    plot["animator"].pause()
-                
+
                 self.top.captureData = False
                  
                 self.writeToFile()
                 self.top.dataCaptureLabel.config(bg = "red")
-                
+
+                time.sleep(0.5)
+                for plot in self.top.plotFrames:                                                # Stop all animators so plots can be manipulated manually  
+                    plot["animator"].pause()
+                                
                 return
         
+
             # extract timestamp and data values
             for i in range(0, len(message.payload)-1, self.sampleBytes):
                 sample = self.unpack(message.payload[i:i+self.sampleBytes])
@@ -191,6 +196,7 @@ class MQTT:
 
 
     def unpack(self, bytes):
+        # TODO: SHOULD THIS BE ERROR CHECKED? PROBABLY TO AVOID CRASH AND TO REPORT ISSUE??
         unpacked = [ bytes[0] << 8 | bytes[1], bytes[2] << 8 | bytes[3] ]                       # Always need to decode timestamp and first channel. Both are 16 bits
 
         if (self.inputChannels > 1):                                                            # If 2 or 3 channels were used, unpack that data too
@@ -269,7 +275,7 @@ class MQTT:
             
             writer.writerow(row)
             
-            # This is ridiculous... why did I do list comprehension. It works though... How essential is this
+            # This is ridiculous... why did I do list comprehension. It works though... 
             length = min(len(inner_array) for sensor_data in self.samples.values() 
                          for inner_array in sensor_data.values() if isinstance(inner_array, list))
             

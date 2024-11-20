@@ -58,7 +58,7 @@ class CustomToolbar(NavigationToolbar2Tk):
         except:
             pass                                                                                # Do nothing with timeout exception so main thread can continue
 
-        # Analysis threads are resposible for killing themselves, 
+        # Analysis threads are responsible for killing themselves, 
         # this happens naturally when code execution ends  
         
 
