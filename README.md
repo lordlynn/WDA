@@ -6,5 +6,12 @@ The embedded portion of the project utilizes a Teensy4.1 microcontroller in orde
 
 Any computer capable of running Python3 applications and an MQTT broker simultaneously will be sufficient for the PC portion of the system. 
 
-Any WiFi router can be used as the middleman between the embedded and PC systems. The only requirements are that you are able to use static IP Addresses. The IP address for the broker must be set statically, so that the embedded devices can be programmed with the correct IP. The default is 192.168.1.2.
+Any WiFi router can be used as the middleman between the embedded and PC systems. The only requirements are that you are able to use static IP addresses. The IP address for the broker must be set statically, so that the embedded devices can be programmed with the correct IP. The default is 192.168.1.2.
 
+# Core application
+The core application is the code that will run on a laptop. In order for this program to work you must first start the MQTT broker.
+
+# Teensy WiFi Arduino
+The embedded code is under the TeensyWiFi_ARDUINO folder. This is set up for use with Arduino IDE.
+
+** The TeensyWiFi folder is a slightly older version of the code which is set up for use with VSCode and PlatformIO
