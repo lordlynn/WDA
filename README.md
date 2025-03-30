@@ -30,7 +30,7 @@ The embedded block encapsulates the EMG sensors and wireless communications to h
 ### Embedded
 The Teensy4.1 microcontroller was selected due to its active community of developers and performance. All Teensy microcontrollers are compatible with Arduino IDE (Arduino, Somerville, MA) so they provide an easy-to-use interface for programming. Teensy microcontrollers cost about the same as Arduinos but with disproportionally greater performance for the price.
 
-The protocol for wireless communication was chosen to be MQTT due to its ease of use and large community of active users. Additionally, MQTT boasts a reduced footprint compared to other protocols such as HTTP, rendering it better suited for environments constrained by limited memory, bandwidth, and computational power [10].
+The protocol for wireless communication was chosen to be MQTT due to its ease of use and large community of active users. Additionally, MQTT boasts a reduced footprint compared to other protocols such as HTTP, rendering it better suited for environments constrained by limited memory, bandwidth, and computational power [4].
 The decision to use MQTT led to the selection of a second peripheral processor that added WiFi functionality to the Teensy4.1. A core requirement for this peripheral was that it supported MQTT by default. The WizFi360 evaluation board was selected since it supported MQTT by default with all Quality of Services available.
 
 
@@ -66,3 +66,11 @@ After data has been captured, custom analysis functions built into the embedded 
 
 The custom analysis functions can be accessed from within the project folder; there are five Python templates named func1.py - func5.py. The fft.py and env.py files may serve as examples for end users looking to implement their own analysis functions. The only requirements are that the functions must be written in Python and initiate execution from the predefined files. The template files will read and parse the sampling frequency, original parent figure title, and the parent figure data from the core application allowing the user to implement future signal processing algorithms in the template files.
 
+# Shortened Bibliography
+[1]	ALCAN, V., & ZİNNUROĞLU, M. (2023). Current developments in surface electromyography. Turkish Journal of Medical Sciences, 53(5), 1019–1031. https://doi.org/10.55730/1300-0144.5667 
+
+[2]	Zhou, R., Luo, Q., Feng, X., & Li, C. (2017). Design of a wireless multi-channel surface EMG Signal Acquisition System. 2017 3rd IEEE International Conference on Computer and Communications (ICCC). https://doi.org/10.1109/compcomm.2017.8322556 
+
+[3]	Bawa, A., & Banitsas, K. (2022). Design validation of a low-cost EMG sensor compared to a commercial-based system for measuring muscle activity and fatigue. Sensors, 22(15), 5799. https://doi.org/10.3390/s22155799
+
+[4]	Darujati, Y. V., Saputra, L. K., Lukito, Y., & Guspara, W. A. (2023). Evaluation of HTTP and MQTT protocols in the design of telemetry data for embedded systems on smart wheelchairs. 2023 IEEE International Conference on Data and Software Engineering (ICoDSE). https://doi.org/10.1109/icodse59534.2023.10291260 
