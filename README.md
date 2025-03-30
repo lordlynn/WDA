@@ -1,5 +1,9 @@
 # Wireless Data Acquisition - Wireless, Low-Cost, and Portable EMG System
 
+# Notes
+The validation analysis and final results are left out of this project as the purpose of this repository is to allow for wireless data acquisition, not to verify my thesis results. However, from the results, it was determined that the system effectively recorded EMG data that could be used for research purposes, contingent on proper preparation and recording practices. 
+
+The data was also aligned closely enough in time between the embedded devices to effectively compare all data streams through time. 
 
 # Abstract
 The growing interest in electromyography (EMG) technology outside of its traditional clinical applications has led to a new demand for low-cost EMG systems that facilitate the recording of complex movements.
