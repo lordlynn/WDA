@@ -35,7 +35,7 @@ class CoreApplication():
     numChannels = None
 
     def __init__(self):
-        self.mqtt = MQTT.MQTT("Laptop", brokerIP=0, top=self)                                   # Set IP to 0 or ommit in arguments to connect to localhost
+        self.mqtt = MQTT.MQTT("Laptop", brokerIP='192.168.1.2', top=self)                       # Set IP to 0 or ommit in arguments to connect to localhost
 
         self.window = tk.Tk()                                                                   # Create applicatio window
         self.window.title("EMG Data Capture")
@@ -67,7 +67,7 @@ class CoreApplication():
                                              bg=leftFrameColor)
 
         self.dataCaptureFrequency = tk.StringVar()
-        self.dataCaptureFrequency.set(2000)
+        self.dataCaptureFrequency.set(1000)
         dataCaptureFrequencySpinBox = ttk.Spinbox(self.lowerFrame, from_ = 1000, to = 2000, 
                                                   justify="center", increment=50, wrap=True,
                                                   textvariable = self.dataCaptureFrequency)
@@ -216,8 +216,9 @@ class CoreApplication():
     # This function is called periodically from FuncAnimation
     def animate(self, i, xs, ys, ax, line):
         
-        line.set_data(xs, ys)
-        if (len(xs) > 1):
+        line.set_data(xs, ys)                                                                   # Plot the x,y pairs
+
+        if (len(xs) > 1):                                                                       # If data was added, extend the x-axis veiw to show all data
             ax.set_xlim(left=xs[0], right=xs[-1])
 
         return line,
@@ -234,41 +235,40 @@ class CoreApplication():
             for devNum in range(self.numDevices):                                               # iterate through connected devices (1-2)
                 temp = {"frame": Frame(self.rightFrame)}                                        # Create a dictionary to hold objects required for plotting
 
-                # Creating embedded matplotlib figure
-                temp["fig"] = Figure(figsize = (6, 2.33), tight_layout = True)
-                temp["ax"] = temp["fig"].add_subplot(1, 1, 1)
-                temp["line"], = temp["ax"].plot([])
-                temp["canvas"] = FigureCanvasTkAgg(temp["fig"], master = temp["frame"])
+                # Creating embedded matplotlib figures in a dictionary
+                temp["fig"] = Figure(figsize = (6, 2.33), tight_layout = True)                  # Create the figure
+                temp["ax"] = temp["fig"].add_subplot(1, 1, 1)                                   # Set the figure up as a subplot for animator function to work well
+                temp["line"], = temp["ax"].plot([])                                             # Initialize the data as empty to intialize plot
+                temp["canvas"] = FigureCanvasTkAgg(temp["fig"], master = temp["frame"])         # Create TK canvas to embbed the plot inside of
                 temp["data"] = []                                                               # Will store the data to be plotted
                 temp["xAxis"] = []                                                              
 
                 # Set up the plot to call animate() periodically to draw the plot in real time
                 temp["animator"] = animation.FuncAnimation(temp["fig"], self.animate, 
-                                                           fargs = (temp["xAxis"], 
+                                                           fargs = (temp["xAxis"],              # The animate function requires these arguments
                                                                     temp["data"], 
                                                                     temp["ax"], 
                                                                     temp["line"]), 
-                                                            interval=250)
+                                                            interval=250)                       # Update every 250 ms
 
                 # Finish setting up blank plot
-                temp["frame"].grid(row = ch, column = devNum, padx = 3, 
+                temp["frame"].grid(row = ch, column = devNum, padx = 3,                         # Set the plot position in the canvas and allow it to stetch with window
                                    pady = 3, sticky = "NWSE")
 
-                self.rightFrame.columnconfigure(devNum, weight = 1)
+                self.rightFrame.columnconfigure(devNum, weight = 1)                             # The plots are in a grid. Make them all equal in size within grid layout
                 self.rightFrame.rowconfigure(ch, weight = 1)
 
                 # Configure the plot with labels and limits for axes
-                temp["ax"].set_ylim(bottom = -0.25, top = 3.6)
+                temp["ax"].set_ylim(bottom = -0.25, top = 3.6)                                  # Set the ylim based on possible voltage values
                 temp["ax"].set_xlabel("Time (s)")                                               # Add x label
                 temp["ax"].set_ylabel("Voltage (v)")                                            # Add y label
                 temp["ax"].set_title(str(self.sensorNames[devNum]) + " CH " + str(ch+1))        # Set title using sensor and channel number
 
-                temp["canvas"] = FigureCanvasTkAgg(temp["fig"], master=temp["frame"])           # A tk.DrawingArea
-                temp["canvas"].draw()                                                           # Draw the area to make the plot appear
-                temp["canvas"].get_tk_widget().pack(expand=True, fill="both")                   # Elements within the embedded plot use pack() not grid()
+                temp["canvas"].draw()                                                           # Draw the canvas to make the plot appear
+                temp["canvas"].get_tk_widget().pack(expand=True, fill="both")                   # Elements within the embedded plot must use pack()
 
-                toolbar = CustomToolbar.CustomToolbar(self, temp)                               # Initialize the custom toolbar
-                toolbar.update()                        
+                toolbar = CustomToolbar.CustomToolbar(self, temp)                               # Initialize the custom toolbar for each plot
+                toolbar.update()                                                                
                 temp["canvas"].get_tk_widget().pack()                                           # add the toolbar to the plot            
                 temp["mask"] = (devNum, ch)
                 self.plotFrames.append(temp)                                                    # Add dictionary to list of plots                                  

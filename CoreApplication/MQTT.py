@@ -74,7 +74,7 @@ class MQTT:
             if rc == 0:
                 print("Connected to MQTT Broker!\n")
             else:
-                print("Failed to connect, return code %d\n", rc)
+                print("Failed to connect, return code " + str(rc))
 
         client = mqtt_client.Client(self.clientID)
         
@@ -196,7 +196,6 @@ class MQTT:
 
 
     def unpack(self, bytes):
-        # TODO: SHOULD THIS BE ERROR CHECKED? PROBABLY TO AVOID CRASH AND TO REPORT ISSUE??
         unpacked = [ bytes[0] << 8 | bytes[1], bytes[2] << 8 | bytes[3] ]                       # Always need to decode timestamp and first channel. Both are 16 bits
 
         if (self.inputChannels > 1):                                                            # If 2 or 3 channels were used, unpack that data too
@@ -275,22 +274,26 @@ class MQTT:
             
             writer.writerow(row)
             
-            # This is ridiculous... why did I do list comprehension. It works though... 
-            length = min(len(inner_array) for sensor_data in self.samples.values() 
-                         for inner_array in sensor_data.values() if isinstance(inner_array, list))
+            ###### This was need to fix an issue on the embedded side. It has since been fixed.   ######
+            # length = min(len(inner_array) for sensor_data in self.samples.values()              # Find the minimum length of all data received and truncates at that point
+            #              for inner_array in sensor_data.values() if isinstance(inner_array, list))
             
-            if (length > (self.top.dataFreq * self.top.dataLen)):                               # If the data length is longer than it should be, truncate it
-                length = self.top.dataFreq * self.top.dataLen
+            # if (length > (self.top.dataFreq * self.top.dataLen)):                               # If the data length is longer than it should be, truncate it
+            #     length = self.top.dataFreq * self.top.dataLen
 
-            fs = int(self.top.dataCaptureFrequency.get())
+
+            length = self.top.dataFreq * self.top.dataLen                                       # Calculate the length of the lists based on frequency and total time
+
+            fs = int(self.top.dataCaptureFrequency.get())                                       # Get the capture frequency from the GUI
             for sensor in self.top.sensorNames:
-                self.samples[sensor]["time"] = [i / fs for i in range(0, length)]
+                self.samples[sensor]["time"] = [i / fs for i in range(0, length)]               # Calculate time based on sample number and capture frequency
 
             for sample in range(length):
                 row = []
                 for sensor in self.top.sensorNames:
                     for ch in self.samples[sensor]:                                             # CH can be the channel number or "time" key
                         row.append(self.samples[sensor][ch][sample])
+
                 writer.writerow(row)
                 
 
@@ -330,6 +333,6 @@ class MQTT:
                     print("BAD VOLTAGE PLOTTING\nValue: " + str(voltage))
 
         if (self.configWasSet[sensor] == False):                                                # If the data capture has finished, stop the animator
-            time.sleep(0.3)
+            time.sleep(0.3)                                                                     # Allow some time in case animator is finishing up
             for plot in self.top.plotFrames:
                 plot["animator"].pause()

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
               
-filename = "./FINAL/CoreApplication/DataFilesICareAbout/bicepCurl.csv"
+filename = "./test.csv"
 arr = []
 with open(filename, "r") as fp:
     while (fp.readable()):

@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# filename = "./DataFilesICareAbout/TestTimeSynch_3CH_40Hz.csv"
 filename = "./TimeSynchTest_3CH.csv"
 arr = []
 numChannels = None
