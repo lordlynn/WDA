@@ -14,9 +14,9 @@ from tkinter import ttk
 import matplotlib.animation as animation
 import time
 
-from matplotlib.figure import Figure                                                            # Used for embedded plot
-from matplotlib.backends.backend_tkagg import (                                                 # Used for custom toolbar
-    FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.figure import Figure                                                            # Used to create the plots
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg                                 # Used to embed the plots in the GUI
+
 
 import MQTT
 import CustomToolbar
@@ -273,63 +273,82 @@ class CoreApplication():
                 temp["mask"] = (devNum, ch)
                 self.plotFrames.append(temp)                                                    # Add dictionary to list of plots                                  
             
-        
-    def setDataCaptureFlag(self, flag):                                                         # Callback for start and stop button to set flags
-        if (flag and self.captureData):                                                         # If the flag is already set to the desired state return
+
+    def setDataCaptureFlag(self, flag):                                                         # Called when GUI start and stop buttons are pressed 
+        if (flag and self.captureData):                                                         # If the flag is already set to the desired state do nothing
             return
         if (flag == 0 and self.captureData == 0):
             return
         
-        self.captureData = flag                                                                 # If the state needs to be chnaged, set it
+        self.captureData = flag                                                                 # If the state needs to be changed, set it
 
         if (flag):                                                                              # If data capture needs to start
-            startTime = []
-            for device in list(self.mqtt.devices.keys()):                                       # Iterate through devices
-                if (self.mqtt.devices[device]):                                                 # If the device is still connected    
-                    # start time = (RTC time) + (time since reading RTC) + offset               
-                    startTime.append(int(self.mqtt.deviceTime[device][0] +                      # Use a start time that is offset seconds in the future 
-                                        (time.time() - self.mqtt.deviceTime[device][1]) + 
-                                         self.mqtt.FORWARD_TIME_OFFSET))
-
-            # Range of start times is same as range of RTC times. Network 
-            # latency is not accounted for so just make sure they are within a few seconds
-            if (max(startTime) - min(startTime) > self.mqtt.FORWARD_TIME_OFFSET / 2):
-                self.serialOutput.insert("end", "Timing is OFF. Please synch RTCs\n") 
-                self.serialOutput.yview('end')  
-                self.captureData = 0
-                return     
-
-            self.numDevices = 0
-            self.sensorNames = []
-            for device in list(self.mqtt.devices.keys()):                                       # If the time synchronization was good find connected sensors                                
-                if (self.mqtt.devices[device]):
-                    self.numDevices += 1
-                    self.sensorNames.append(device)
-
-            self.addPlots()                                                                     # Setup embedded plots in GUI, captureData flag is set after plots are made
-
-            for device in list(self.mqtt.devices.keys()):                                       # Send configuration messages to all connected sensors to start sampling                               
-                if (self.mqtt.devices[device]):
-                    self.dataLen = int(self.dataCaptureTime.get())
-                    self.dataFreq = int(self.dataCaptureFrequency.get())
-                    self.numChannels = int(self.inputChannels.get())
-                    
-                    self.mqtt.sendConfiguration(self.dataLen, 
-                                                self.dataFreq, 
-                                                self.numChannels,
-                                                device,
-                                                max(startTime))     
-            
-            self.startButton["state"] = DISABLED                                                # Disable start button until ready to run another test
-            self.dataCaptureLabel.config(bg = "green")                                          # Set data capture label to green
-
+            self.startDataCapture()
         else:                                                                                   # If the stop button was pushed
-            for device in list(self.mqtt.devices.keys()):                                       # Iterate through devices
-                self.mqtt.configWasSet[device] = False                                          # Ends data capture
+            self.stopDataCapture()
+            
+
+    def startDataCapture(self): 
+        self.numDevices = 0
+        self.sensorNames = []
+        startTime = []
+
+        ######### Use the RTC time reported by devices to calculate the start time #########
+        for device in list(self.mqtt.devices.keys()):                                           # Iterate through devices
+            if (self.mqtt.devices[device] == 0):                                                # If the deivce is not connected skip over    
+                continue
+
+            # start time = (RTC time) + (time since reading RTC) + offset               
+            startTime.append(int(self.mqtt.deviceTime[device][0] +                              # Use a start time that is offset seconds in the future 
+                            (time.time() - self.mqtt.deviceTime[device][1]) + 
+                            self.mqtt.FORWARD_TIME_OFFSET))
+            
+            self.numDevices += 1                                                                # Keep track of connected devices for setting up embedded plots
+            self.sensorNames.append(device)
+
+        if (self.numDevices == 0):                                                              # Check to make sure there is at leas 1 connected device              
+            self.serialOutput.insert("end", "No devices are connected\n") 
+            self.serialOutput.yview('end')  
+            self.captureData = 0
+            return
+            
+        # Range of start times is the range of RTC times. Network 
+        # latency is not accounted for so just make sure they are within a few seconds
+        # If time synchronization was performed they are with 2-5 ms
+        if (max(startTime) - min(startTime) > self.mqtt.FORWARD_TIME_OFFSET):                   # Check the RTC time synchronization
+            self.serialOutput.insert("end", "Timing is OFF. Please synch RTCs\n") 
+            self.serialOutput.yview('end')  
+            self.captureData = 0
+            return     
+
+        ######## If time synchronization is good, setup plots and send start signal ########
+        self.addPlots()                                                                         # Setup embedded plots in GUI
+
+        for device in list(self.mqtt.devices.keys()):                                           # Send configuration messages to all connected sensors to start sampling                               
+            if (self.mqtt.devices[device] == 0):                                                # If the deivce is not connected skip over
+                continue
+
+            self.dataLen = int(self.dataCaptureTime.get())                                      # Config message: trial length, fs, num Channels, start time
+            self.dataFreq = int(self.dataCaptureFrequency.get())                                # Get these values from the GUI and convert from str to int
+            self.numChannels = int(self.inputChannels.get())
+            
+            self.mqtt.sendConfiguration(self.dataLen, 
+                                        self.dataFreq, 
+                                        self.numChannels,
+                                        device,
+                                        max(startTime))     
+        
+        self.startButton["state"] = DISABLED                                                    # Disable start button until ready to run another test
+        self.dataCaptureLabel.config(bg = "green")                                              # Set data capture label to green
+    
+
+    def stopDataCapture(self):
+        for device in list(self.mqtt.devices.keys()):                                           # Iterate through devices
+            self.mqtt.configWasSet[device] = False                                              # Ends data capture
             self.dataCaptureLabel.config(bg = "red")                                            # Set data capture label to red 
             self.mqtt.writeToFile()                                                             # Write data to file
-            
-            
+
+
     def connectSensors(self):
         self.mqtt.sendPayload("sensor1", "pong")                                                # Send a "pong" to both sensors
         self.mqtt.sendPayload("sensor2", "pong")
