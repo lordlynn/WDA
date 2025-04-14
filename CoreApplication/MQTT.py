@@ -1,10 +1,12 @@
-########################################################################
+################################################################################
 #   Title: MQTT.py
 #   Author: Zac Lynn
-#   Description: This code implements the MQTT communications required
-#        for the wireless EMG system. 
 #
-########################################################################        
+#   Description: This code implements the MQTT communications. It will connect
+#           to the broker, send messages, parse received messages, add raw data 
+#           dictionary for plotting, and save the final output file.
+#        
+################################################################################        
 from paho.mqtt import client as mqtt_client
 from tkinter import NORMAL
 import socket
@@ -324,9 +326,9 @@ class MQTT:
             
             for ch in chs:
 
-                # Gotta be an easier more efficient way, this works though
+
                 for i in range(len(self.top.plotFrames)):
-                    if (self.top.plotFrames[i]["mask"] == (sensorNum-1, ch)):
+                    if (self.top.plotFrames[i]["mask"] == (sensorNum-1, ch)):                   # Gets the position of the plot in the grid layout
                         index = i
                         break
                 

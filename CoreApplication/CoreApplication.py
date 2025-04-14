@@ -1,4 +1,4 @@
-########################################################################
+################################################################################
 #   Title: CoreApplication.py
 #   Author: Zac Lynn
 #   Description: This code implements the user interface required for 
@@ -6,20 +6,18 @@
 #
 #   Note: For this program to start succesfully the Broker must 
 #           already be running.
-########################################################################
+################################################################################
 import tkinter as tk
 import tkinter.scrolledtext as st
 from tkinter import *
 from tkinter import ttk
 import matplotlib.animation as animation
 import time
-
 from matplotlib.figure import Figure                                                            # Used to create the plots
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg                                 # Used to embed the plots in the GUI
-
-
 import MQTT
 import CustomToolbar
+
 
 class CoreApplication():                                             
     captureData = False                                                                         # Flag to tell if data should be saved to file or not
@@ -29,10 +27,10 @@ class CoreApplication():
     numDevices = 0                                                                              # Number of connected devices
     sensorNames = []                                                                            # Holds the name of the connected sensor at start of data capture, mainlu used by MQTT class
     bgColor = "blue4"                                                                           # TKinter color to use for window background
-
     dataLen = None
     dataFreq = None
     numChannels = None
+
 
     def __init__(self):
         self.mqtt = MQTT.MQTT("Laptop", brokerIP='192.168.1.2', top=self)                       # Set IP to 0 or ommit in arguments to connect to localhost
@@ -51,6 +49,7 @@ class CoreApplication():
         
         self.mqtt.client.loop_start()                                                           # Begin MQTT looping to automatically poll broker                            
         self.window.mainloop()                                                                  # Open and run main window
+
 
     def setupLeftFrame(self): 
         leftFrameColor = "grey"
@@ -126,7 +125,7 @@ class CoreApplication():
         self.serialOutput = st.ScrolledText(self.output, width = 1, height = 1, 
                                             font = ("Times New Roman", 13))
 
-        # Frames
+        # Create the Frames in the control panel
         self.leftFrame.grid(row = 0, column = 0, padx = 10, pady = 5, sticky = "NWSE")
         self.output.grid(row = 0, column = 0, padx = 10, pady = 5, sticky = "NWSE")
         self.middleFrame.grid(row = 1, column = 0, padx = 10, pady = 5, sticky = "NWSE")
@@ -140,7 +139,7 @@ class CoreApplication():
         self.leftFrame.columnconfigure(1, weight = 1)
         self.leftFrame.columnconfigure(2, weight = 1)
         
-        # Lower Frame
+        # Create and positions elements in Lower Frame
         self.outputFilenameEntryLabel.grid(row = 0, column = 0, padx = 10, pady = 5, 
                                            sticky = "NWSE")
         self.outputFilenameEntry.grid(row = 0, column = 1, columnspan = 2, padx = 20, 
@@ -168,7 +167,7 @@ class CoreApplication():
         self.dataCaptureLabel.grid(row = 4, column = 2, padx = 5, pady = 5, 
                                    sticky = "NWSE")
 
-        # Allow all items to scale with parent
+        # Allow all items to scale with parent frame
         self.lowerFrame.columnconfigure(0, weight = 1)
         self.lowerFrame.columnconfigure(1, weight = 1)
         self.lowerFrame.columnconfigure(2, weight = 1)
@@ -179,7 +178,7 @@ class CoreApplication():
         self.lowerFrame.rowconfigure(3, weight = 1)
         self.lowerFrame.rowconfigure(4, weight = 1)
         
-        # Adding elements to devices list
+        # Adding elements to devices list 
         self.connectedDevicesLabel.grid(row = 0, column = 0, sticky = "NWSE")
         self.connectDevicesBtn.grid(row = 1, column = 0, sticky = "NWSE")
 
@@ -209,7 +208,7 @@ class CoreApplication():
     def setupRightFrame(self):
         self.rightFrame = Frame(self.window, bg = self.bgColor)
 
-        # Adding frames to window
+        # Position frame in window
         self.rightFrame.grid(row = 0, column = 1, sticky = "NWSE")
 
         
