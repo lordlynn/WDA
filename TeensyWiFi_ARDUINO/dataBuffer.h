@@ -1,10 +1,10 @@
-/***********************************************************************
+/***************************************************************************
  * Title: dataBuffer.cpp
  * Author: Zac Lynn
  * 
  * Description: This class implements a circular buffer of structs that
  *      Holds the sensor readings before they have been sent over MQTT.
- **********************************************************************/
+ **************************************************************************/
 #include "Arduino.h"
 #include <string.h>
 

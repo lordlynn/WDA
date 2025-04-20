@@ -1,32 +1,35 @@
-/***********************************************************************
+/***************************************************************************
  * Title: Main.cpp
  * Author: Zac Lynn
  * 
  * Description: This program uses the ADC and UART to record EMG data
  *    From Myoware2.0 sensors and report it wirelessly using the 
  *    WizFi360.
- **********************************************************************/
+ **************************************************************************/        
 #include <Arduino.h>
 #include "MQTT.h"
 #include "dataBuffer.h"
-#include "RTC.h"
+#include <TimeLib.h>
 
-/* max char limit with = 2048 bytes and data len must be divisible by 2
-* timestamp - 2 bytes
-* data      - 2 bytes
-* total bytes = (2 + Channels * 3) * SAMPLES
-* Max = 2048 / (2 + Channels * 3) = 256
-*/
-#define SAMPLES 250
+/***************************************************************** 
+ * Max char limit = 2048 bytes and data len must be divisible by 2  
+ *  timestamp - 2 bytes
+ *  data      - 2 bytes
+ *  total bytes = (2 + Channels * 3) * SAMPLES
+ *  Max = 2048 / (2 + Channels * 3) = 256
+ * Play it safe, use 250, we are guaranteed to be under char limit
+ ****************************************************************/
+#define SAMPLES 250 
 
-/* Data buffer memory usage is roughly the size of the array of structures.
- * try to fill ~90% of RAM with buffer space. This is probably overkill
+/*****************************************************************
+ * Data buffer memory usage is the size of the array of structures
+ * try to fill ~90% of RAM with buffer. This is probably overkill
  * Ex: Free 412kB -> buffer size = 412kB * 0.9 / 8 bytes = 46350
- */
+ * Play it safe and round down to 45k.
+ ****************************************************************/
 dataBuffer buffer = dataBuffer(45000, 3);
 
 MQTT mqtt;
-RTC rtc;
 IntervalTimer dataCaptureInt;                                                           // Interrupt every sample period to record data
 IntervalTimer endCaptureInt;                                                            // Interrupt at end of test to stop sampling
 uint8_t ch[] = {14, 15, 17};                                                            // pin numbers to use for CH1-CH3
@@ -43,7 +46,7 @@ void GPIO_IRQ(void);
 
 
 void setup() {
-  Serial.begin(1000000);                                                                 // Serial for communicating with PC for debugging purposes
+  Serial.begin(1000000);                                                                // Serial for communicating with PC for debugging purposes
   Serial1.begin(1500000);                                                               // Serial1 for communicating with WizFi360
 
   Serial.println("INIT");
@@ -89,7 +92,7 @@ void loop() {
 
 
 void GPIO_IRQ(void) {
-  rtc.rtc_set_time(0x0);
+  Teensy3Clock.set(0);                                                                  // Set the RTC time to 0
   Serial.println("RTC has been reset...");
   detachInterrupt(digitalPinToInterrupt(4));                                            // Detach interrupt after it runs once to prevent bouncing switch from running this multiple times
 }
@@ -105,8 +108,8 @@ void sendDataToServer() {
 
   free(strPtr);
 
-  if (buffer.sampleBytes * numPopped < 400) {
-    delay(25);                                                                          // If the buffer is mostly empty, delay a slight amount. transfer is most efficient at max size  
+  if (buffer.sampleBytes * numPopped < 400) {                                          
+    delay(25);                                                                          // If the buffer is mostly empty, delay a slight amount. Transfer is more efficient with more samples  
   }
 }
 
@@ -123,8 +126,8 @@ void startSampling() {
 
   Serial.printf("Time: %d\n", mqtt.startTime);
   buffer.reset(mqtt.numChannels);                                                       // Reset buffer with new ch number
-
-  while (rtc.secs() <= mqtt.startTime);                                                 // Delay until start time
+                                       
+  while (Teensy3Clock.get() <= mqtt.startTime);                                         // Delay until start time
 
   dataCaptureInt.begin(takeSample, mqtt.samplePeriod);                                  // Start Data capture interrupts
   endCaptureInt.begin(endSampling, mqtt.testLen);

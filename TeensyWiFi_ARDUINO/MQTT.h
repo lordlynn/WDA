@@ -1,17 +1,22 @@
+/***************************************************************************
+ * Title: MQTT.cpp
+ * Author: Zac Lynn
+ * 
+ * Description: This program interfaces with the WizFi360 to setup and
+ *    use MQTT to send and receive data.
+ **************************************************************************/
 #include "Arduino.h"
 #include <string>
-#include "RTC.h"
+#include <TimeLib.h>
 
 #define BROKER_IP "192.168.1.2"                                                         // Broker IP - Broker should be static IP at 192.168.1.2
-#define BROKER_PORT "1883"
+#define BROKER_PORT "1883"                                                              // MQTT default port is 1883
 
-#define DEVICE_ID "sensor2"
+#define DEVICE_ID "sensor1"
 
 #define MAX_SAMPLE_FREQ 2000
 #define MAX_LEN         30
 #define MAX_CHANNELS    3
-
-extern RTC rtc;                                                                         // Get rtc object from main so that current RTC time can be sent
 
 class MQTT {
     public:
@@ -31,6 +36,7 @@ class MQTT {
         void sendTime();
 
     private:
+        void resetWizFi();
         int checkForOK();    
         void sendATCommand(char *cmd, int length);
         void readResponse(char buff[], int len);
