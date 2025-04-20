@@ -5,13 +5,14 @@
 #   Description: This code implements the MQTT communications. It will connect
 #           to the broker, send messages, parse received messages, add raw data 
 #           dictionary for plotting, and save the final output file.
-#        
+#
+#   Notes: Communication and data
 ################################################################################        
-from paho.mqtt import client as mqtt_client
-from tkinter import NORMAL
-import socket
-import time
-import csv
+from paho.mqtt import client as mqtt_client                                                     # Provides functions to connect, read, and send messaged with MQTT
+from tkinter import NORMAL                                                                      # Set the state of buttons so that they can be used again
+import socket                                                                                   # Used to get the local network IP of the device
+import time                                                                                     # Used to make some small delays and to get current time
+import csv                                                                                      # Used to write the output data file
 
 
 class MQTT:
@@ -70,7 +71,7 @@ class MQTT:
         finally:
             s.close()
 
-    
+    # TODO: Link documentation here
     def connect_mqtt(self):
         def on_connect(client, userData, flags, rc):
             if rc == 0:
@@ -92,7 +93,7 @@ class MQTT:
         topic = deviceID + "/CONFIG/"
 
         result = self.client.publish(topic , msg, qos=2, retain=False)
-            
+        # TODO: Evaluate alterantives. Why have empty if at this point
         # result: [0, 1]
         status = result[0]
         if status == 0:
@@ -197,16 +198,16 @@ class MQTT:
             self.configWasSet[sensor] = False                                                   # Reset for next data capture
             self.top.captureData = False
                 
-            self.writeToFile()                                                                  # Writ the data to the output file
+            self.writeToFile()                                                                  # Write the data to the output file
             self.top.dataCaptureLabel.config(bg = "red")
 
-            time.sleep(0.5)
+            time.sleep(0.5)                                                                     # Allow some time in case animator is finishing up
             for plot in self.top.plotFrames:                                                    # Stop all animators so plots can be manipulated manually  
                 plot["animator"].pause()
                             
             return
     
-        # extract timestamp and data values
+        # Extract timestamp and data values
         for i in range(0, len(message.payload)-1, self.sampleBytes):
             sample = self.unpack(message.payload[i:i+self.sampleBytes])
             data.append(sample)                                                                 # "data" variable is passed to plotter function
@@ -288,16 +289,21 @@ class MQTT:
             writer.writerow(row)
             
             
-            length = min(len(inner_array) for sensor_data in self.samples.values()              # Find the minimum length of all data received and truncates at that point
-                         for inner_array in sensor_data.values() if isinstance(inner_array, list))
-            
+            # In case there is a mismacth between the number of samples reported by each
+            # device, use the shorter length to make the lengths match
+            num_samples = []
+                                                             
+            for sensor in self.top.sensorNames:                                                 # Iterate through sensors that data was collected on
+                num_samples.append(len(self.samples[sensor]["time"]))                           # add the length of the time array to a list
+            length = min(num_samples)                                                           # Find the minimum length of data received by both sensors
+
             if (length > (self.top.dataFreq * self.top.dataLen)):                               # If the data length is longer than it should be, truncate it
                 length = self.top.dataFreq * self.top.dataLen
 
 
-            fs = int(self.top.dataCaptureFrequency.get())                                       # Get the capture frequency from the GUI. Its a str so cast to int
             for sensor in self.top.sensorNames:
-                self.samples[sensor]["time"] = [i / fs for i in range(0, length)]               # Calculate time based on sample number and capture frequency
+                self.samples[sensor]["time"] = [i / self.top.dataFreq 
+                                                for i in range(0, length)]                      # Calculate time based on sample number and capture frequency
 
             for sample in range(length):                                                        # Iterate through overall number of samples
                 row = []
@@ -307,18 +313,18 @@ class MQTT:
 
                 writer.writerow(row)                                                            # write a single row to output csv
                 
-
+    # TODO: comment this bih
     def plotData(self, data, sensor):                                                           # Plot data in embedded plots
         index = 0                                                                               # Holds a calculated index that is used multiple times
         sensorNum = 0
-        samplePeriod = 1.0 / int(self.top.dataCaptureFrequency.get()) 
+        samplePeriod = 1.0 / self.top.dataFreq 
         
         for key in list(self.devices.keys()):
             sensorNum += self.devices[key]                                                      # Increment for every connected sensor
             if key in sensor:
                 break
         
-        chs = [i for i in range(int(self.top.inputChannels.get()))]
+        chs = [i for i in range(self.top.numChannels)]
         for sample in data:
 
             if (len(sample) < 2):                                                               # If the line did not have two parts

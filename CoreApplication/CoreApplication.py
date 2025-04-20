@@ -6,17 +6,21 @@
 #
 #   Note: For this program to start succesfully the Broker must 
 #           already be running.
+#
+#   Notes: GUI
 ################################################################################
-import tkinter as tk
-import tkinter.scrolledtext as st
-from tkinter import *
-from tkinter import ttk
-import matplotlib.animation as animation
-import time
+import tkinter as tk                                                                            # Import tkinter to make the GUI
+import tkinter.scrolledtext as st                                                               # Import scrolled text area for the text output
+from tkinter import ttk                                                                         # Used for the spinboxes for entering config
+from tkinter import Frame, Button, DISABLED                                                     # Import basic gui elements: Frame, Button
+
 from matplotlib.figure import Figure                                                            # Used to create the plots
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg                                 # Used to embed the plots in the GUI
-import MQTT
-import CustomToolbar
+import matplotlib.animation as animation                                                        # Used to continuously update the plots
+
+import CustomToolbar                                                                            # Custom class that adds functions to embedded plots
+import MQTT                                                                                     # Custom class to handle wireless communications
+import time
 
 
 class CoreApplication():                                             
@@ -50,7 +54,7 @@ class CoreApplication():
         self.mqtt.client.loop_start()                                                           # Begin MQTT looping to automatically poll broker                            
         self.window.mainloop()                                                                  # Open and run main window
 
-
+    # TODO: Put this in a different class so the core application is not ui setup
     def setupLeftFrame(self): 
         leftFrameColor = "grey"
         
@@ -230,7 +234,7 @@ class CoreApplication():
 
         self.plotFrames = []
         
-        for ch in range(int(self.inputChannels.get(), base = 10)):                              # Iterate through number of channels (1-3)
+        for ch in range(self.numChannels):                                                      # Iterate through number of channels (1-3)
             for devNum in range(self.numDevices):                                               # iterate through connected devices (1-2)
                 temp = {"frame": Frame(self.rightFrame)}                                        # Create a dictionary to hold objects required for plotting
 
@@ -243,13 +247,14 @@ class CoreApplication():
                 temp["xAxis"] = []                                                              
 
                 # Set up the plot to call animate() periodically to draw the plot in real time
-                temp["animator"] = animation.FuncAnimation(temp["fig"], self.animate, 
-                                                           fargs = (temp["xAxis"],              # The animate function requires these arguments
-                                                                    temp["data"], 
-                                                                    temp["ax"], 
-                                                                    temp["line"]), 
-                                                            interval=250)                       # Update every 250 ms
-
+                temp["animator"] = animation.FuncAnimation(temp["fig"],                         # Figure to plot in
+                                                           self.animate,                        # Animate function
+                                                           fargs = (temp["xAxis"],              # X-data
+                                                                    temp["data"],               # Y-data
+                                                                    temp["ax"],                 # Used to update xAxis view
+                                                                    temp["line"]),              # Used to actually update plot
+                                                            interval=250,                       # Update every 250 ms
+                                                            cache_frame_data=False)             # Each frame is only shown once and not saved, dont need cache       
                 # Finish setting up blank plot
                 temp["frame"].grid(row = ch, column = devNum, padx = 3,                         # Set the plot position in the canvas and allow it to stetch with window
                                    pady = 3, sticky = "NWSE")
@@ -258,7 +263,7 @@ class CoreApplication():
                 self.rightFrame.rowconfigure(ch, weight = 1)
 
                 # Configure the plot with labels and limits for axes
-                temp["ax"].set_ylim(bottom = -0.25, top = 3.6)                                  # Set the ylim based on possible voltage values
+                temp["ax"].set_ylim(bottom = -0.25, top = 3.6)                                  # Set the ylim based on possible voltage values (0-3.3v)
                 temp["ax"].set_xlabel("Time (s)")                                               # Add x label
                 temp["ax"].set_ylabel("Voltage (v)")                                            # Add y label
                 temp["ax"].set_title(str(self.sensorNames[devNum]) + " CH " + str(ch+1))        # Set title using sensor and channel number
@@ -309,7 +314,7 @@ class CoreApplication():
             self.serialOutput.insert("end", "No devices are connected\n") 
             self.serialOutput.yview('end')  
             self.captureData = 0
-            return
+            return                                                                              # Dont continue if no devices are connected
             
         # Range of start times is the range of RTC times. Network 
         # latency is not accounted for so just make sure they are within a few seconds
@@ -318,7 +323,12 @@ class CoreApplication():
             self.serialOutput.insert("end", "Timing is OFF. Please synch RTCs\n") 
             self.serialOutput.yview('end')  
             self.captureData = 0
-            return     
+            return                                                                              # Dont start the data capture if RTCs are off
+
+        # Save these to variables so chnaging them during test doesnt cause crash
+        self.dataLen = int(self.dataCaptureTime.get())                                          
+        self.dataFreq = int(self.dataCaptureFrequency.get())                                    
+        self.numChannels = int(self.inputChannels.get())
 
         ######## If time synchronization is good, setup plots and send start signal ########
         self.addPlots()                                                                         # Setup embedded plots in GUI
@@ -326,10 +336,6 @@ class CoreApplication():
         for device in list(self.mqtt.devices.keys()):                                           # Send configuration messages to all connected sensors to start sampling                               
             if (self.mqtt.devices[device] == 0):                                                # If the deivce is not connected skip over
                 continue
-
-            self.dataLen = int(self.dataCaptureTime.get())                                      # Config message: trial length, fs, num Channels, start time
-            self.dataFreq = int(self.dataCaptureFrequency.get())                                # Get these values from the GUI and convert from str to int
-            self.numChannels = int(self.inputChannels.get())
             
             self.mqtt.sendConfiguration(self.dataLen, 
                                         self.dataFreq, 

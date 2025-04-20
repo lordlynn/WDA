@@ -3,24 +3,25 @@
 #   Author: Zac Lynn
 #   Description: This code implements the custom buttons in the user 
 #        interface that call the custom analysis functions.
-#
 ########################################################################
 from subprocess import PIPE, Popen                                                              # For running analysis functions
-from matplotlib.figure import Figure                                                            # Used for embedded plot
-from matplotlib.backends.backend_tkagg import (                                                 # Used for custom toolbar
-    FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk                              # Used for creating custom toolbar
+    
 
 # Custom toolbar class provides custom analysis functions embedded into plots
-class CustomToolbar(NavigationToolbar2Tk):
+class CustomToolbar(NavigationToolbar2Tk):                                                      # Inherit from default toolbar to add new icons/functions                                            
+    GUI = None
+    plotFrame = None
+
     def __init__(self, GUI, plotFrame):
         self.GUI = GUI
         self.plotFrame = plotFrame
         
-        self.toolitems = [t for t in NavigationToolbar2Tk.toolitems]                            # Add standard buttons
+        self.toolitems = [t for t in NavigationToolbar2Tk.toolitems]                            # Add standard buttons 
         
         self.toolitems.append(                                                                  # Add buttons for custom functions   
-            # Button name, hover hint, icon file name, callback function
-            ("fft", "Calculate FFT", "fft", 'fft_callback')
+            # Button name,    hover hint,    icon file name,  callback function
+            ("fft",        "Calculate FFT",      "fft",        'fft_callback')
         )
         self.toolitems.append(          
             ("env", "Calculate moving average envelope", "env", 'env_callback')
@@ -41,18 +42,18 @@ class CustomToolbar(NavigationToolbar2Tk):
             ("func5", "custom function 5", "func5", 'func5_callback')
         )
 
-        NavigationToolbar2Tk.__init__(self, plotFrame["canvas"], plotFrame["frame"])
+        NavigationToolbar2Tk.__init__(self, plotFrame["canvas"], plotFrame["frame"])            # Call parent init to setup custom toolbar
 
 
     def start_subProcess(self, script):
         p = Popen(['python', './customFunctions/' + script],                                    # Start a new process and connect pipes for stdin, stdout, and stderr      
                   stdin = PIPE, stdout = PIPE, stderr = PIPE)
         
-        TxData = (str(self.GUI.dataCaptureFrequency.get()) + "," +                              # Combine the sampling frequency, figure title, and figure data to send through pipe
+        TxData = (str(self.GUI.dataFreq) + "," +                                                # Combine the sampling frequency, figure title, and figure data to send through pipe
                   str(self.plotFrame["ax"].get_title()) + "," + 
                   str(self.plotFrame["data"]))
         
-
+        # Try catch used to prevent blocking. If timout occurs raises Exception
         try:                                                                                    # Send the data to new process, timeout will raise exception
             p.communicate(TxData.encode('utf8'), timeout=1)                                     # Setting a timeout makes this non-blocking, freeing main thread to return
         except:
@@ -60,6 +61,7 @@ class CustomToolbar(NavigationToolbar2Tk):
 
         # Analysis threads are responsible for killing themselves, 
         # this happens naturally when code execution ends  
+        # Just dont open 10k windows and it will be fine
         
 
     def fft_callback(self):

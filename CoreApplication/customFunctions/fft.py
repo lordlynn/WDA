@@ -38,7 +38,7 @@ fft = np.abs(fft)
 # Frequency in cycles/d, so d = sample period
 freq = np.fft.fftfreq(nfft, d=(1.0/int(frequency)))
 
-# Arrays are from min->max->mirror so remove mirror and zoom in on 0-500Hz
+# Arrays are from min->max->mirror so remove mirror and zoom in on 0 to caprture frequency / 4 
 fft = fft[0:nfft//4]
 freq = freq[0:nfft//4]
 
