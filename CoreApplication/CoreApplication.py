@@ -29,7 +29,7 @@ class CoreApplication():
     mqtt = None                                                                                 # Stores MQTT class instance
     plotFrames = []                                                                             # Holds data and necessary objects for the embedded plots
     numDevices = 0                                                                              # Number of connected devices
-    sensorNames = []                                                                            # Holds the name of the connected sensor at start of data capture, mainlu used by MQTT class
+    sensorNames = []                                                                            # Holds the name of the connected sensor at start of data capture, mainly used by MQTT class
     bgColor = "blue4"                                                                           # TKinter color to use for window background
     dataLen = None
     dataFreq = None
@@ -54,7 +54,7 @@ class CoreApplication():
         self.mqtt.client.loop_start()                                                           # Begin MQTT looping to automatically poll broker                            
         self.window.mainloop()                                                                  # Open and run main window
 
-    # TODO: Put this in a different class so the core application is not ui setup
+
     def setupLeftFrame(self): 
         leftFrameColor = "grey"
         
@@ -355,8 +355,8 @@ class CoreApplication():
 
 
     def connectSensors(self):
-        self.mqtt.sendPayload("sensor1", "pong")                                                # Send a "pong" to both sensors
-        self.mqtt.sendPayload("sensor2", "pong")
+        self.mqtt.sendPayload("sensor1", "ping")                                                # Send a "ping" to both sensors
+        self.mqtt.sendPayload("sensor2", "ping")
 
         self.device1Status.config(text="-")                                                     # Update the GUI to show as disconnected
         self.device2Status.config(text="-")

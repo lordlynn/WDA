@@ -40,7 +40,7 @@ class MQTT:
 
         self.port = port                                                                        # Set broker port
         self.clientID = clientID                                                                # The ID we provide to the broker
-
+        
         self.client = self.connect_mqtt()                                                       # Create MQTT object and connect
         
         # Add subscriptions
@@ -53,7 +53,8 @@ class MQTT:
         else:
             print(f"INITIALIZATION ERROR:\tFailed to subscribe to {topic}")
 
-        # Set callback function for message reception. This function prototype is given in Paho MQTT documentation
+        # Set callback function for message reception
+        # https://pypi.org/project/paho-mqtt/1.6.1/#callbacks
         self.client.on_message = self.on_message
 
 
@@ -71,21 +72,24 @@ class MQTT:
         finally:
             s.close()
 
-    # TODO: Link documentation here
-    def connect_mqtt(self):
-        def on_connect(client, userData, flags, rc):
-            if rc == 0:
-                print("Connected to MQTT Broker!\n")
-            else:
-                print("Failed to connect, return code " + str(rc))
 
+    # https://pypi.org/project/paho-mqtt/1.6.1/#callbacks
+    def on_connect(self, client, userData, flags, rc):
+        if rc == 0:
+            print("Connected to MQTT Broker!\n")
+        else:
+            print("Failed to connect, return code " + str(rc))
+            
+
+    def connect_mqtt(self):
         client = mqtt_client.Client(self.clientID)
         
-        client.on_connect = on_connect
+        client.on_connect = self.on_connect                                                     # Set the callback for connection attempt
         try:
             client.connect(self.broker, self.port)
         except Exception as err:
             print("INITIALIZATION ERROR:\t" + str(err))
+
         return client
 
 
@@ -93,13 +97,11 @@ class MQTT:
         topic = deviceID + "/CONFIG/"
 
         result = self.client.publish(topic , msg, qos=2, retain=False)
-        # TODO: Evaluate alterantives. Why have empty if at this point
-        # result: [0, 1]
+
+        # result: [0 (success), 1 (failure)]
         status = result[0]
-        if status == 0:
-            # print("Sent payload to topic: " + topic)
-            pass
-        else:
+
+        if status == 1:
             print(f"Failed to send message to topic: " + topic)
 
   
@@ -111,10 +113,9 @@ class MQTT:
         sensor = sensor[0]
 
         keys = list(self.devices.keys())
-
-        data = []
         
-        # No easy way to tell if data is UTF-8 unless you try to decode it. So using try-except
+        # No easy way to tell if data is UTF-8 unless you try to decode it. 
+        # So using try-except to tell if it is valid UTF-8
         try:                                                                                    # If the time message was not sent decoding will raise excpetion
             if ("TIME" == message.payload[0:4].decode('utf-8')):
                 t = ((message.payload[7] << 24) | (message.payload[6] << 16) |                  # Extract a unit32_t time value (RTC time)
@@ -132,22 +133,29 @@ class MQTT:
         try:                                                                                    # If this fails it's the raw data not the config/setup messages
             msg = message.payload.decode('utf-8')
         except:
-            msg = ""                                                                            # Set the message to empty string so it exists and has a value
+            msg = ""                                                                            # If the message is not UTF-8 it is raw data so set to ""
             
         # Ping is initiated by embedded device, pong is initiated by core application
-        if ("ping" in msg or "pong" in msg):                                                    # If a ping or pong was received, send a ping back
-            self.checkConnectionResponse(keys, sensor)
-            return                                                                              # If ping or pong was received, dont run the rest of the code
+        if ("ping" in msg):                                                                     # If a ping was received, send a pong back
+            self.sendPayload(sensor, "pong")                                                    
+            self.checkConnectionResponse(keys, sensor)                                          # Update the connection status
+            return                                                                              
+        elif ("pong" in msg):                                                                   # If pong was received, update connection status 
+            self.checkConnectionResponse(keys, sensor)  
+            return     
         
         if (self.waitingForStart[sensor]):                                                      # If waiting for start, check messages for "START" / "FAIL"
             self.checkConfigResponse(msg, sensor)
             
         elif (self.configWasSet[sensor]):                                                       # If data capture is in progress
-            self.readRawData(msg, message, keys, sensor)
+            if ("END" in msg):                                                                  # If end of data capture was reached
+                self.checkForEND(sensor, keys)     
+                return                                                                          # Dont try to decode data if it is the end of data capture                
+
+            self.readRawData(message, sensor)
 
 
     def checkConnectionResponse(self, keys, sensor):
-        self.sendPayload(sensor, "ping")
         if (keys[0] in sensor):                                                                 # If sensor 1 responded set it as connected
             self.top.device1Status.config(text="+")
             self.devices[keys[0]] = 1
@@ -175,37 +183,36 @@ class MQTT:
                                             sensor + "\n") 
             self.top.serialOutput.yview('end')  
 
+    def checkForEND(self, sensor, keys):                                                                
+        if (keys[0] in sensor):                                                                 # Check which sensor sent END
+            self.top.device1Status.config(text="-")
+            self.devices[keys[0]] = 0
 
-    def readRawData(self, msg, message, keys, sensor):
-        data = []
+        if (keys[1] in sensor):
+            self.top.device2Status.config(text="-")
+            self.devices[keys[1]] = 0
 
-        if ("END" in msg):                                                                      # If end of data capture was reached
-            if (keys[0] in sensor):                                                             # Check which sensor sent END
-                self.top.device1Status.config(text="-")
-                self.devices[keys[0]] = 0
+        self.top.serialOutput.insert("end", "Data Capture from " + 
+                                        sensor + " ended\n") 
+        self.top.serialOutput.yview('end') 
 
-            if (keys[1] in sensor):
-                self.top.device2Status.config(text="-")
-                self.devices[keys[1]] = 0
-
-            self.top.serialOutput.insert("end", "Data Capture from " + 
-                                            sensor + " ended\n") 
-            self.top.serialOutput.yview('end') 
-
-            if (self.devices[keys[0]] == 1 or self.devices[keys[1]] == 1):                      # Do not stop the data capture until both sensors report "END"
-                return
-
-            self.configWasSet[sensor] = False                                                   # Reset for next data capture
-            self.top.captureData = False
-                
-            self.writeToFile()                                                                  # Write the data to the output file
-            self.top.dataCaptureLabel.config(bg = "red")
-
-            time.sleep(0.5)                                                                     # Allow some time in case animator is finishing up
-            for plot in self.top.plotFrames:                                                    # Stop all animators so plots can be manipulated manually  
-                plot["animator"].pause()
-                            
+        if (self.devices[keys[0]] == 1 or self.devices[keys[1]] == 1):                          # Do not stop the data capture until both sensors report "END"
             return
+
+        self.configWasSet[sensor] = False                                                       # Reset for next data capture
+        self.top.captureData = False
+            
+        self.writeToFile()                                                                      # Write the data to the output file
+        self.top.dataCaptureLabel.config(bg = "red")
+
+        time.sleep(0.5)                                                                         # Allow some time in case animator is finishing up
+        for plot in self.top.plotFrames:                                                        # Stop all animators so plots can be manipulated manually  
+            plot["animator"].pause()
+                            
+        
+
+    def readRawData(self, message, sensor):
+        data = []
     
         # Extract timestamp and data values
         for i in range(0, len(message.payload)-1, self.sampleBytes):
@@ -257,6 +264,46 @@ class MQTT:
 
         self.inputChannels = int(inputChannels)
         self.sampleBytes = 2 + (self.inputChannels * 2)
+
+          
+    def plotData(self, data, sensor):                                                           # Plot data in embedded plots
+        index = 0                                                                               # Holds a calculated index that is used multiple times
+        sensorNum = 0
+        samplePeriod = 1.0 / self.top.dataFreq 
+        
+
+        for key in list(self.devices.keys()):                                                   # Conver the name of the sensor to the embedded plot column
+            sensorNum += self.devices[key]                                                      # Increment for every connected sensor
+            if key in sensor:                                                                   # When we find the sensor whos data we have, break 
+                break
+        
+        for sample in data:                                                                     # Iterate through all of the samples from the msg
+            # sample is [time, ch1, ch2, ch3]
+            
+            for ch in range(self.top.numChannels):                                              # Iterate through the channels used
+
+                for i in range(len(self.top.plotFrames)):                                       # Look through all of the plotframes and find index of the correct plot
+                    if (self.top.plotFrames[i]["mask"] == (sensorNum-1, ch)):                   # Gets the position of the plot in the grid layout
+                        index = i
+                        break
+                
+                voltage = sample[ch+1] / 1023.0 * 3.3                                           # Convert raw ADC value to voltage 
+                self.top.plotFrames[index]["data"].append(voltage)                              # Add the voltage to the plot data
+                
+                if (len(self.top.plotFrames[index]["xAxis"]) == 0):                             # If the x-axis is empty 
+                    self.top.plotFrames[index]["xAxis"].append(0.0)                             # Append a 0
+                else:                                                                           # If it is not the first sample, caclulate the time value  
+                    self.top.plotFrames[index]["xAxis"].append(
+                        self.top.plotFrames[index]["xAxis"][-1]+samplePeriod)
+
+                if (voltage > 3.3):                                                             # This will happen if something went in data decoding wrong...
+                    print("BAD VOLTAGE PLOTTING\nValue: " + str(voltage))
+
+
+        if (self.configWasSet[sensor] == False):                                                # If the data capture has finished, stop the animator
+            time.sleep(0.3)                                                                     # Allow some time in case animator is finishing up
+            for plot in self.top.plotFrames:
+                plot["animator"].pause()
 
 
     def writeToFile(self):
@@ -313,43 +360,3 @@ class MQTT:
 
                 writer.writerow(row)                                                            # write a single row to output csv
                 
-    # TODO: comment this bih
-    def plotData(self, data, sensor):                                                           # Plot data in embedded plots
-        index = 0                                                                               # Holds a calculated index that is used multiple times
-        sensorNum = 0
-        samplePeriod = 1.0 / self.top.dataFreq 
-        
-        for key in list(self.devices.keys()):
-            sensorNum += self.devices[key]                                                      # Increment for every connected sensor
-            if key in sensor:
-                break
-        
-        chs = [i for i in range(self.top.numChannels)]
-        for sample in data:
-
-            if (len(sample) < 2):                                                               # If the line did not have two parts
-                continue
-            
-            for ch in chs:
-
-
-                for i in range(len(self.top.plotFrames)):
-                    if (self.top.plotFrames[i]["mask"] == (sensorNum-1, ch)):                   # Gets the position of the plot in the grid layout
-                        index = i
-                        break
-                
-                voltage = sample[ch+1] / 1023.0 * 3.3
-                self.top.plotFrames[index]["data"].append(voltage)
-                
-                if (len(self.top.plotFrames[index]["xAxis"]) == 0):
-                    self.top.plotFrames[index]["xAxis"].append(0.0)
-                else:
-                    self.top.plotFrames[index]["xAxis"].append((self.top.plotFrames[index]["xAxis"][-1]+samplePeriod))
-
-                if (voltage > 3.3):
-                    print("BAD VOLTAGE PLOTTING\nValue: " + str(voltage))
-
-        if (self.configWasSet[sensor] == False):                                                # If the data capture has finished, stop the animator
-            time.sleep(0.3)                                                                     # Allow some time in case animator is finishing up
-            for plot in self.top.plotFrames:
-                plot["animator"].pause()

@@ -95,7 +95,7 @@ void MQTT::waitForStart() {                                                     
     if (data == NULL)                                                                   // Check if the pointer is null, meaning nothing was after "->" 
       continue;
 
-    if (strncmp(data, " pong", 5) == 0) {                                               // Check if pong was received. Do this here so that we reconnect/connect during config stage
+    if (strncmp(data, " ping", 5) == 0) {                                               // Check if ping was received. Do this here so that we reconnect/connect during config stage
       publishStr(pong, 4);                                                              // Return pong and current RTC time
       sendTime();                                                                       
     }
@@ -186,8 +186,8 @@ void MQTT::pingServer() {
     if (data == NULL)                                                                   // Check if the pointer is null, meaning nothing was after "->"
         continue;
 
-    if (strncmp(data, " ping", 5) == 0) {                                               // Check if the message we recieved was a ping
-      break;                                                                            // If server pings back, exit function
+    if (strncmp(data, " pong", 5) == 0) {                                               // Check if we got the pong response
+      break;                                                                            // If server pong back, exit function
     }
   }
   
