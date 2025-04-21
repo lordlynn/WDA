@@ -3,9 +3,9 @@
 
 void MQTT::initMQTT() {
   int errorFlag;
-  std::string str;
+  std::string str;                                                                      // Use c++ string to use += instead of strcat. Slighly easier to read
 
-  // This loop is not great because it is hard to read
+  // This loop is not great because it is hard to read... string tokenization :/
   do {
     errorFlag = 0;                                                                      // If this stays as 0 then setup worked 
     
@@ -35,7 +35,7 @@ void MQTT::initMQTT() {
     str += "\"";   
     // Final Command: AT+MQTTTOPIC="DEVICE_ID/","DEVICE_ID/CONFIG/"
 
-    sendATCommand((char *) (str.c_str()), str.length());    
+    sendATCommand((char *) (str.c_str()), str.length());                                // Convert C++ str to C str
     if (checkForOK()) { 
       Serial.println("Publish and Subscribe topics have been set");
     }
@@ -147,7 +147,6 @@ void MQTT::waitForStart() {                                                     
       continue;
     }
 
-
     publishStr(start, 5);                                                               // If the config values were good send "START" signal
     samplePeriod = (1.0 / sampleFrequency) * 1000 * 1000;                               // Convert frequency to period in microseconds
     testLen = captureLen * 1000 * 1000;                                                 // Convert seconds to us
@@ -178,7 +177,6 @@ void MQTT::pingServer() {
      * Messaged received over MQTT will be printed on serial  
      * connection in the format: "Sub_topic -> Message"
      ************************************************************/
-
     topic = strtok(buff, "->");                                                         // Get portion before "->"
     if (topic == NULL)                                                                  // Check if the pointer is null, meaning "->" was not found
       continue; 
@@ -198,10 +196,9 @@ void MQTT::pingServer() {
 
 
 void MQTT::sendTime(void) {                                                             // Send current RTC time
-  char time[8] = "TIME";                                                                // Header "TIME" in message indicates we are sending our RTC time
-
-                                                          
+  char time[8] = "TIME";                                                                // Header "TIME" in message indicates we are sending our RTC time                                                  
   uint32_t t = Teensy3Clock.get();                                                      // Get RTC value in seconds
+  
   memcpy(&(time[4]), (const void *) &t, 4);                                             // Write the binary of the time value after header                   
 
   publishStr(time, 8);
@@ -313,10 +310,10 @@ void MQTT::readResponse(char buff[], int len) {
      * We dont know how long the message is so delay long enough
      * for any future characters to be sent.
      *
-     * Using a 2M baud rate so:
+     * Using a 1.5M baud rate so:
      *
-     *    2e6 baud / 8 bits = byte rate = 250k bytes / second
-     *    period for 1 byte to be sent: 1/250k = 4us
+     *    1.5e6 baud / 8 bits = byte rate = 187.5k bytes / second
+     *    period for 1 byte to be sent: 1/187.5k = 5.333us
      *    Delay rounded up to 10us to be safe. 
      *    (Should also work with 1M baud)
      ************************************************************/
